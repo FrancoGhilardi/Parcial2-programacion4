@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,7 +15,7 @@ FRONTEND_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     create_db_and_tables()
     with Session(engine) as session:
         seed_unidades_medida(session)

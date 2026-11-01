@@ -13,14 +13,14 @@ def obtener_categoria_o_404(session: Session, categoria_id: int) -> Categoria:
     # RN-03: también lo usa productos al clasificar (FK a categoría inexistente).
     categoria = session.get(Categoria, categoria_id)
     if categoria is None:
-        raise HTTPException(status_code=404, detail=f"Categoría {categoria_id} no encontrada")
+        raise HTTPException(status_code=404, detail="No se encontró la categoría.")
     return categoria
 
 
 def _validar_categoria_activa(categoria: Categoria) -> None:
     # RN-05: una categoría anulada no admite modificación.
     if not categoria.activo:
-        raise HTTPException(status_code=409, detail=f"La categoría {categoria.id} está anulada")
+        raise HTTPException(status_code=409, detail="Esta categoría está anulada y no se puede modificar.")
 
 
 def _validar_nombre_unico(session: Session, nombre: str, excluir_id: int | None = None) -> None:
@@ -32,7 +32,7 @@ def _validar_nombre_unico(session: Session, nombre: str, excluir_id: int | None 
     if excluir_id is not None:
         query = query.where(Categoria.id != excluir_id)
     if session.exec(query).first() is not None:
-        raise HTTPException(status_code=409, detail=f"Ya existe una categoría activa con el nombre '{nombre}'")
+        raise HTTPException(status_code=409, detail=f"Ya hay una categoría activa llamada «{nombre}». Elegí otro nombre.")
 
 
 # ---------- Casos de uso ----------
@@ -79,7 +79,7 @@ def anular_categoria(session: Session, categoria_id: int) -> None:
     categoria = obtener_categoria_o_404(session, categoria_id)
     # RN-04: anular un registro ya anulado se rechaza.
     if not categoria.activo:
-        raise HTTPException(status_code=409, detail=f"La categoría {categoria_id} ya está anulada")
+        raise HTTPException(status_code=409, detail="Esta categoría ya estaba anulada.")
 
     # RN-06: no se tocan los productos clasificados en ella.
     categoria.activo = False

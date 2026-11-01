@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import { useState } from 'react'
+import type { ChangeEvent, SubmitEvent } from 'react'
 import type { Producto, ProductoPayload } from '../types/producto'
 import type { UnidadMedida } from '../types/unidadMedida'
+import Alert from './Alert'
+import Button from './Button'
+import Field, { claseControl } from './Field'
+import Modal from './Modal'
 
 interface ProductoModalProps {
   producto: Producto | null
@@ -36,10 +40,6 @@ function estadoInicial(producto: Producto | null): FormState {
   }
 }
 
-const inputClase =
-  'mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:bg-stone-100'
-const labelClase = 'block text-sm font-medium text-stone-700'
-
 export default function ProductoModal({
   producto,
   unidades,
@@ -50,15 +50,6 @@ export default function ProductoModal({
 }: ProductoModalProps) {
   const [form, setForm] = useState<FormState>(() => estadoInicial(producto))
 
-  // Escape cierra el modal (salvo mientras se guarda).
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !guardando) onCancelar()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [guardando, onCancelar])
-
   const unidadSeleccionada = unidades.find((unidad) => String(unidad.id) === form.unidad_venta_id)
   const esContable = unidadSeleccionada?.tipo === 'contable'
 
@@ -67,7 +58,7 @@ export default function ProductoModal({
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     onGuardar({
       nombre: form.nombre.trim(),
@@ -80,114 +71,107 @@ export default function ProductoModal({
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-stone-900/50 p-4">
-      <form
-        onSubmit={handleSubmit}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="titulo-modal"
-        className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
-      >
-        <h2 id="titulo-modal" className="text-lg font-semibold text-stone-900">
-          {producto === null ? 'Nuevo producto' : `Editar ${producto.nombre}`}
-        </h2>
+    <Modal
+      titulo={producto === null ? 'Nuevo producto' : `Editar ${producto.nombre}`}
+      cerrable={!guardando}
+      onCerrar={onCancelar}
+    >
+      <form onSubmit={handleSubmit}>
+        <p className="mt-1 text-sm text-stone-500">Los campos con * son obligatorios.</p>
 
-        {error && (
-          <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
+        {error && <Alert className="mt-4">{error}</Alert>}
 
         <div className="mt-4 space-y-4">
-          <div>
-            <label htmlFor="nombre" className={labelClase}>
-              Nombre
-            </label>
-            <input
-              id="nombre"
-              name="nombre"
-              value={form.nombre}
-              onChange={handleChange}
-              required
-              minLength={3}
-              autoFocus
-              className={inputClase}
-            />
-          </div>
+          <Field id="nombre" etiqueta="Nombre" obligatorio ayuda="Mínimo 3 caracteres.">
+            {(control) => (
+              <input
+                {...control}
+                name="nombre"
+                value={form.nombre}
+                onChange={handleChange}
+                required
+                minLength={3}
+                autoFocus
+                className={claseControl}
+              />
+            )}
+          </Field>
 
-          <div>
-            <label htmlFor="descripcion" className={labelClase}>
-              Descripción <span className="font-normal text-stone-400">(opcional)</span>
-            </label>
-            <textarea
-              id="descripcion"
-              name="descripcion"
-              value={form.descripcion}
-              onChange={handleChange}
-              rows={2}
-              className={inputClase}
-            />
-          </div>
+          <Field id="descripcion" etiqueta="Descripción" opcional>
+            {(control) => (
+              <textarea
+                {...control}
+                name="descripcion"
+                value={form.descripcion}
+                onChange={handleChange}
+                rows={2}
+                className={claseControl}
+              />
+            )}
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="precio_base" className={labelClase}>
-                Precio ($)
-              </label>
+            <Field id="precio_base" etiqueta="Precio ($)" obligatorio>
+              {(control) => (
+                <input
+                  {...control}
+                  name="precio_base"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.precio_base}
+                  onChange={handleChange}
+                  required
+                  className={claseControl}
+                />
+              )}
+            </Field>
+
+            <Field id="unidad_venta_id" etiqueta="Unidad de venta" obligatorio>
+              {(control) => (
+                <select
+                  {...control}
+                  name="unidad_venta_id"
+                  value={form.unidad_venta_id}
+                  onChange={handleChange}
+                  required
+                  className={claseControl}
+                >
+                  <option value="" disabled>
+                    Seleccioná una unidad
+                  </option>
+                  {unidades.map((unidad) => (
+                    <option key={unidad.id} value={unidad.id}>
+                      {unidad.nombre} ({unidad.simbolo})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          </div>
+
+          <Field
+            id="stock_cantidad"
+            etiqueta={unidadSeleccionada ? `Stock (${unidadSeleccionada.simbolo})` : 'Stock'}
+            obligatorio
+            ayuda={
+              esContable ? 'Esta unidad se vende por unidades enteras: ingresá un número sin decimales.' : undefined
+            }
+          >
+            {(control) => (
               <input
-                id="precio_base"
-                name="precio_base"
+                {...control}
+                name="stock_cantidad"
                 type="number"
                 min={0}
-                step="0.01"
-                value={form.precio_base}
+                step={esContable ? '1' : '0.001'}
+                value={form.stock_cantidad}
                 onChange={handleChange}
                 required
-                className={inputClase}
+                className={claseControl}
               />
-            </div>
-
-            <div>
-              <label htmlFor="unidad_venta_id" className={labelClase}>
-                Unidad de venta
-              </label>
-              <select
-                id="unidad_venta_id"
-                name="unidad_venta_id"
-                value={form.unidad_venta_id}
-                onChange={handleChange}
-                required
-                className={inputClase}
-              >
-                <option value="" disabled>
-                  Seleccionar…
-                </option>
-                {unidades.map((unidad) => (
-                  <option key={unidad.id} value={unidad.id}>
-                    {unidad.nombre} ({unidad.simbolo})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="stock_cantidad" className={labelClase}>
-              Stock {unidadSeleccionada && `(${unidadSeleccionada.simbolo})`}
-            </label>
-            <input
-              id="stock_cantidad"
-              name="stock_cantidad"
-              type="number"
-              min={0}
-              step={esContable ? '1' : '0.001'}
-              value={form.stock_cantidad}
-              onChange={handleChange}
-              required
-              className={inputClase}
-            />
-            {esContable && <p className="mt-1 text-xs text-stone-500">Unidad contable: solo números enteros.</p>}
-          </div>
+            )}
+          </Field>
 
           <label className="flex items-center gap-2 text-sm text-stone-700">
             <input
@@ -201,23 +185,14 @@ export default function ProductoModal({
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancelar}
-            disabled={guardando}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Button variante="ghost" onClick={onCancelar} disabled={guardando}>
             Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={guardando}
-            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {guardando ? 'Guardando…' : 'Guardar'}
-          </button>
+          </Button>
+          <Button variante="primary" type="submit" disabled={guardando}>
+            {guardando ? 'Guardando…' : producto === null ? 'Crear producto' : 'Guardar cambios'}
+          </Button>
         </div>
       </form>
-    </div>
+    </Modal>
   )
 }

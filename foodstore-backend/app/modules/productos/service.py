@@ -21,21 +21,21 @@ from app.modules.unidades_medida.model import TipoUnidad, UnidadMedida, UnidadMe
 def obtener_producto_o_404(session: Session, producto_id: int) -> Producto:
     producto = session.get(Producto, producto_id)
     if producto is None:
-        raise HTTPException(status_code=404, detail=f"Producto {producto_id} no encontrado")
+        raise HTTPException(status_code=404, detail="No se encontró el producto.")
     return producto
 
 
 def _validar_producto_activo(producto: Producto) -> None:
     # RN-05: un producto anulado no admite modificación.
     if not producto.activo:
-        raise HTTPException(status_code=409, detail=f"El producto {producto.id} está anulado")
+        raise HTTPException(status_code=409, detail="Este producto está anulado y no se puede modificar.")
 
 
 def _obtener_unidad_o_404(session: Session, unidad_id: int) -> UnidadMedida:
     # RN-03: no se puede referenciar por FK una unidad inexistente.
     unidad = session.get(UnidadMedida, unidad_id)
     if unidad is None:
-        raise HTTPException(status_code=404, detail=f"Unidad de medida {unidad_id} no encontrada")
+        raise HTTPException(status_code=404, detail="La unidad de venta seleccionada no existe. Elegí otra.")
     return unidad
 
 
@@ -44,7 +44,7 @@ def _validar_stock_segun_unidad(unidad: UnidadMedida, stock: Decimal) -> None:
     if unidad.tipo == TipoUnidad.contable and stock != stock.to_integral_value():
         raise HTTPException(
             status_code=422,
-            detail=f"La unidad '{unidad.nombre}' es contable: stock_cantidad debe ser un número entero",
+            detail=f"Con la unidad de venta «{unidad.nombre}», el stock debe ser un número entero, sin decimales.",
         )
 
 
@@ -57,7 +57,7 @@ def _validar_nombre_unico(session: Session, nombre: str, excluir_id: int | None 
     if excluir_id is not None:
         query = query.where(Producto.id != excluir_id)
     if session.exec(query).first() is not None:
-        raise HTTPException(status_code=409, detail=f"Ya existe un producto activo con el nombre '{nombre}'")
+        raise HTTPException(status_code=409, detail=f"Ya hay un producto activo llamado «{nombre}». Elegí otro nombre.")
 
 
 def to_public(producto: Producto) -> ProductoPublic:
@@ -152,7 +152,7 @@ def anular_producto(session: Session, producto_id: int) -> None:
     producto = obtener_producto_o_404(session, producto_id)
     # RN-04: anular un registro ya anulado se rechaza.
     if not producto.activo:
-        raise HTTPException(status_code=409, detail=f"El producto {producto_id} ya está anulado")
+        raise HTTPException(status_code=409, detail="Este producto ya estaba anulado.")
 
     # Baja lógica: no modifica disponible ni stock (RN-12).
     producto.activo = False
@@ -171,12 +171,12 @@ def clasificar_producto(
     _validar_producto_activo(producto)
     categoria = obtener_categoria_o_404(session, data.categoria_id)
     if not categoria.activo:
-        raise HTTPException(status_code=409, detail=f"La categoría {categoria.id} está anulada")
+        raise HTTPException(status_code=409, detail=f"La categoría «{categoria.nombre}» está anulada y no admite nuevos productos.")
     # RN-07: un producto no se clasifica dos veces en la misma categoría.
     if session.get(ProductoCategoria, (producto_id, data.categoria_id)) is not None:
         raise HTTPException(
             status_code=409,
-            detail=f"El producto {producto_id} ya está clasificado en la categoría {data.categoria_id}",
+            detail=f"El producto ya pertenece a la categoría «{categoria.nombre}».",
         )
 
     # RN-09: la principal anterior deja de serlo en la misma operación (un solo commit).

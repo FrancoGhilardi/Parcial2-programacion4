@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import Alert from './components/Alert'
+import Button from './components/Button'
 import ConfirmDialog from './components/ConfirmDialog'
 import Navbar from './components/Navbar'
 import ProductoList from './components/ProductoList'
@@ -10,6 +12,49 @@ const API_URL = 'http://localhost:8000/api/v1'
 // La API pagina con limit (máx. 50); la UI pide el máximo.
 const URL_PRODUCTOS = `${API_URL}/productos?limit=50`
 
+// Nombres con los que el usuario conoce cada campo del formulario.
+const ETIQUETAS_CAMPO: Record<string, string> = {
+  nombre: 'El nombre',
+  descripcion: 'La descripción',
+  precio_base: 'El precio',
+  unidad_venta_id: 'La unidad de venta',
+  stock_cantidad: 'El stock',
+  disponible: 'La disponibilidad',
+}
+
+interface ErrorValidacion {
+  type?: string
+  loc?: unknown[]
+  ctx?: Record<string, unknown>
+}
+
+// Traduce un error de validación de Pydantic (422) a un mensaje en español.
+function traducirErrorValidacion(item: ErrorValidacion): string {
+  const campo = ETIQUETAS_CAMPO[String(item.loc?.at(-1))] ?? 'Un dato'
+  const ctx = item.ctx ?? {}
+  switch (item.type) {
+    case 'missing':
+      return `${campo} es obligatorio.`
+    case 'string_too_short':
+      return `${campo} debe tener al menos ${String(ctx.min_length)} caracteres.`
+    case 'greater_than_equal':
+      return ctx.ge === 0 ? `${campo} no puede ser negativo.` : `${campo} debe ser mayor o igual a ${String(ctx.ge)}.`
+    case 'decimal_max_places':
+      return `${campo} admite hasta ${String(ctx.decimal_places)} decimales.`
+    case 'decimal_whole_digits':
+    case 'decimal_max_digits':
+    case 'less_than_equal':
+      return `${campo} es demasiado grande.`
+    case 'decimal_parsing':
+    case 'decimal_type':
+    case 'int_parsing':
+    case 'int_type':
+      return `${campo} debe ser un número.`
+    default:
+      return `${campo} tiene un valor no válido.`
+  }
+}
+
 // Convierte el {"detail": ...} de la API en un texto para mostrar.
 // detail es un string (HTTPException) o una lista de errores (422 de Pydantic).
 async function leerError(res: Response): Promise<string> {
@@ -19,21 +64,25 @@ async function leerError(res: Response): Promise<string> {
       const { detail } = data
       if (typeof detail === 'string') return detail
       if (Array.isArray(detail)) {
-        return detail
-          .map((item: unknown) =>
-            typeof item === 'object' && item !== null && 'msg' in item ? String(item.msg) : String(item),
-          )
-          .join('. ')
+        const mensajes = detail.map((item: unknown) =>
+          typeof item === 'object' && item !== null ? traducirErrorValidacion(item) : 'Hay datos inválidos.',
+        )
+        return [...new Set(mensajes)].join(' ')
       }
     }
   } catch {
     // respuesta sin cuerpo JSON
   }
-  return `Error ${res.status}`
+  return res.status >= 500
+    ? `El servidor tuvo un problema (código ${res.status}). Intentá de nuevo en unos minutos.`
+    : `El servidor rechazó la solicitud (código ${res.status}).`
 }
 
 function mensajeDeError(e: unknown): string {
-  return e instanceof TypeError ? 'No se pudo conectar con la API' : e instanceof Error ? e.message : 'Error inesperado'
+  if (e instanceof TypeError) {
+    return 'No se pudo conectar con el servidor. Verificá que esté en funcionamiento e intentá de nuevo.'
+  }
+  return e instanceof Error ? e.message : 'Ocurrió un error inesperado. Intentá de nuevo.'
 }
 
 // GET de productos: lo usan la carga inicial y el refresco tras cada operación.
@@ -110,8 +159,8 @@ export default function App() {
   const refrescarProductos = async () => {
     try {
       setProductos(await obtenerProductos())
-    } catch (e) {
-      setErrorAccion(`Los cambios se guardaron, pero no se pudo actualizar la lista: ${mensajeDeError(e)}`)
+    } catch {
+      setErrorAccion('El cambio se guardó, pero no pudimos actualizar la lista. Recargá la página para ver los datos actuales.')
     }
   }
 
@@ -191,15 +240,9 @@ export default function App() {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         {errorAccion && (
-          <div
-            role="alert"
-            className="mb-6 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            <span>{errorAccion}</span>
-            <button type="button" onClick={() => setErrorAccion(null)} className="font-medium hover:underline">
-              Cerrar
-            </button>
-          </div>
+          <Alert className="mb-6" onCerrar={() => setErrorAccion(null)}>
+            {errorAccion}
+          </Alert>
         )}
 
         {cargando ? (
@@ -208,17 +251,12 @@ export default function App() {
             Cargando catálogo…
           </div>
         ) : error ? (
-          <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
-            <p className="font-semibold text-red-800">No se pudo cargar el catálogo</p>
-            <p className="mt-1 text-sm text-red-700">{error}</p>
-            <button
-              type="button"
-              onClick={reintentar}
-              className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
-            >
+          <Alert titulo="No pudimos cargar el catálogo" tamano="lg" className="text-center">
+            <p className="mt-1">{error}</p>
+            <Button variante="danger" className="mt-4" onClick={reintentar}>
               Reintentar
-            </button>
-          </div>
+            </Button>
+          </Alert>
         ) : productos.length === 0 ? (
           <div className="rounded-xl border border-dashed border-stone-300 bg-white p-12 text-center">
             <p className="font-semibold text-stone-800">Todavía no hay productos</p>
@@ -250,8 +288,8 @@ export default function App() {
       {productoAAnular && (
         <ConfirmDialog
           titulo="Anular producto"
-          mensaje={`¿Anular "${productoAAnular.nombre}"? Dejará de aparecer en el catálogo y no se puede deshacer desde la interfaz.`}
-          textoConfirmar="Anular"
+          mensaje={`¿Anular «${productoAAnular.nombre}»? Va a dejar de aparecer en el catálogo. Esta acción no se puede deshacer desde la interfaz.`}
+          textoConfirmar="Sí, anular"
           procesando={procesando}
           onConfirmar={() => void confirmarAnulacion()}
           onCancelar={() => setProductoAAnular(null)}

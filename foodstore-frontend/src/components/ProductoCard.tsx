@@ -1,4 +1,5 @@
 import type { Producto } from '../types/producto'
+import Button from './Button'
 
 interface ProductoCardProps {
   producto: Producto
@@ -11,9 +12,6 @@ interface ProductoCardProps {
 // "$ 12,50" y "3,5" con formato argentino
 const formatoPrecio = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const formatoStock = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 3 })
-
-const botonBase =
-  'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50'
 
 export default function ProductoCard({
   producto,
@@ -75,30 +73,33 @@ export default function ProductoCard({
       )}
 
       <div className="mt-auto flex gap-2 pt-4">
-        <button
-          type="button"
+        <Button
+          tamano="sm"
           onClick={() => onEditar(producto)}
+          aria-label={`Editar ${producto.nombre}`}
           disabled={procesando}
-          className={`${botonBase} bg-stone-100 text-stone-800 hover:bg-stone-200`}
         >
           Editar
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variante="warning"
+          tamano="sm"
           onClick={() => onToggleDisponible(producto)}
+          aria-label={`${producto.disponible ? 'Pausar' : 'Reanudar'} venta de ${producto.nombre}`}
           disabled={procesando}
-          className={`${botonBase} bg-amber-100 text-amber-900 hover:bg-amber-200`}
         >
           {producto.disponible ? 'Pausar venta' : 'Reanudar venta'}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variante="dangerSoft"
+          tamano="sm"
+          className="ml-auto"
           onClick={() => onAnular(producto)}
+          aria-label={`Anular ${producto.nombre}`}
           disabled={procesando}
-          className={`${botonBase} ml-auto bg-red-50 text-red-700 hover:bg-red-100`}
         >
           Anular
-        </button>
+        </Button>
       </div>
     </article>
   )

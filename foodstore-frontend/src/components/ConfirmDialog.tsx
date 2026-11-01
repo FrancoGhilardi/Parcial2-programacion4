@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import Button from './Button'
+import Modal from './Modal'
 
 interface ConfirmDialogProps {
   titulo: string
@@ -17,52 +18,24 @@ export default function ConfirmDialog({
   onConfirmar,
   onCancelar,
 }: ConfirmDialogProps) {
-  // Escape cancela (salvo mientras se procesa la acción).
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !procesando) onCancelar()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [procesando, onCancelar])
-
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-stone-900/50 p-4">
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="titulo-confirmacion"
-        aria-describedby="mensaje-confirmacion"
-        className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
-      >
-        <h2 id="titulo-confirmacion" className="text-lg font-semibold text-stone-900">
-          {titulo}
-        </h2>
-        <p id="mensaje-confirmacion" className="mt-2 text-sm text-stone-600">
-          {mensaje}
-        </p>
-
-        <div className="mt-6 flex justify-end gap-2">
-          {/* El foco inicial va a Cancelar: la opción segura. */}
-          <button
-            type="button"
-            onClick={onCancelar}
-            disabled={procesando}
-            autoFocus
-            className="rounded-lg px-4 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={onConfirmar}
-            disabled={procesando}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {procesando ? 'Procesando…' : textoConfirmar}
-          </button>
-        </div>
+    <Modal
+      titulo={titulo}
+      descripcion={mensaje}
+      rol="alertdialog"
+      tamano="sm"
+      cerrable={!procesando}
+      onCerrar={onCancelar}
+    >
+      <div className="mt-6 flex justify-end gap-2">
+        {/* El foco inicial va a Cancelar: la opción segura. */}
+        <Button variante="ghost" onClick={onCancelar} disabled={procesando} autoFocus>
+          Cancelar
+        </Button>
+        <Button variante="danger" onClick={onConfirmar} disabled={procesando}>
+          {procesando ? 'Procesando…' : textoConfirmar}
+        </Button>
       </div>
-    </div>
+    </Modal>
   )
 }

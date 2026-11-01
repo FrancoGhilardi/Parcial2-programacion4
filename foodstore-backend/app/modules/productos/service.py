@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, func, select
 
 from app.modules.categorias.service import obtener_categoria_o_404
@@ -125,16 +124,7 @@ def listar_productos(
         texto = search.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
         query = query.where(col(Producto.nombre).ilike(f"%{texto}%", escape="\\"))
 
-    # Carga unidad y categorías en pocas consultas (evita N+1 al armar ProductoPublic).
-    query = (
-        query.options(
-            selectinload(Producto.unidad_venta),
-            selectinload(Producto.categoria_links).selectinload(ProductoCategoria.categoria),
-        )
-        .order_by(Producto.id)
-        .offset(skip)
-        .limit(limit)
-    )
+    query = query.order_by(Producto.id).offset(skip).limit(limit)
     return [to_public(producto) for producto in session.exec(query).all()]
 
 

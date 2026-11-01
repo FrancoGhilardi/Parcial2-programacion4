@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 
-from app.core.database import SessionDep
+from app.core.database import ID_MAX, SessionDep
 from app.modules.productos import service
 from app.modules.productos.schema import (
     CategoriaDeProducto,
@@ -14,7 +14,7 @@ from app.modules.productos.schema import (
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
-ProductoId = Annotated[int, Path(gt=0, description="ID del producto")]
+ProductoId = Annotated[int, Path(gt=0, le=ID_MAX, description="ID del producto")]
 
 
 @router.post("", response_model=ProductoPublic, status_code=201)
@@ -32,7 +32,9 @@ def listar_productos(
         bool | None, Query(description="Omitido o true: solo activos. false: solo anulados")
     ] = None,
     disponible: Annotated[bool | None, Query(description="Filtra por disponible; omitido no filtra")] = None,
-    categoria_id: Annotated[int | None, Query(description="Solo productos de esa categoría")] = None,
+    categoria_id: Annotated[
+        int | None, Query(gt=0, le=ID_MAX, description="Solo productos de esa categoría")
+    ] = None,
     search: Annotated[str | None, Query(description="Coincidencia parcial sobre el nombre")] = None,
 ) -> list[ProductoPublic]:
     """Lista productos con paginación y filtros."""

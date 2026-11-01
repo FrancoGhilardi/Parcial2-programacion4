@@ -2,13 +2,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 
-from app.core.database import SessionDep
+from app.core.database import ID_MAX, SessionDep
 from app.modules.categorias import service
 from app.modules.categorias.schema import CategoriaCreate, CategoriaPublic, CategoriaUpdate
 
 router = APIRouter(prefix="/categorias", tags=["Categorías"])
 
-CategoriaId = Annotated[int, Path(gt=0, description="ID de la categoría")]
+CategoriaId = Annotated[int, Path(gt=0, le=ID_MAX, description="ID de la categoría")]
 
 
 @router.post("", response_model=CategoriaPublic, status_code=201)

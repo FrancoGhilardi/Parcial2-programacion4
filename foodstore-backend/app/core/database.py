@@ -14,6 +14,10 @@ DATABASE_URL = os.getenv(
 
 engine = create_engine(DATABASE_URL)
 
+# Máximo de una columna INTEGER de PostgreSQL. Los ids recibidos se validan contra
+# este valor para responder 422 en lugar de un error de la base (500).
+ID_MAX = 2_147_483_647
+
 
 def create_db_and_tables() -> None:
     SQLModel.metadata.create_all(engine)

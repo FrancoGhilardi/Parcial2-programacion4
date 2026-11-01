@@ -1,0 +1,18 @@
+# Opcional: PostgreSQL 16 en Docker para desarrollo.
+# Se expone en el puerto 5433 para no chocar con un PostgreSQL local en 5432.
+# Con esta base, definir:
+#   DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/foodstore
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: foodstore
+    ports:
+      - "5433:5432"
+    volumes:
+      - foodstore_data:/var/lib/postgresql/data
+
+volumes:
+  foodstore_data:

@@ -1,0 +1,366 @@
+# Pruebas del módulo Productos (extensión REST Client de VS Code).
+# Ejecutar en orden sobre una base recién creada (ver README).
+# IDs del seed de unidades: 1 kilogramo (peso), 3 litro (volumen), 5 pieza (contable).
+
+@baseUrl = http://localhost:8000/api/v1
+
+### Unidades de medida (origen del selector del frontend)
+# Esperado: 200
+GET {{baseUrl}}/unidades-medida
+
+############################################################
+# POST /productos
+############################################################
+
+### Crear producto por kilogramo con stock decimal
+# Esperado: 201 (unidad anidada y hay_stock = true)
+# @name harina
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Harina 000",
+  "descripcion": "Harina de trigo",
+  "precio_base": 12.50,
+  "unidad_venta_id": 1,
+  "stock_cantidad": 3.5,
+  "disponible": true
+}
+
+### Crear producto contable con stock entero
+# Esperado: 201
+# @name empanada
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Empanada de carne",
+  "precio_base": 900,
+  "unidad_venta_id": 5,
+  "stock_cantidad": 24
+}
+
+### Crear producto sin stock_cantidad (default 0) y pausado
+# Esperado: 201 (stock_cantidad = 0, hay_stock = false, disponible = false)
+# @name agua
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Agua mineral",
+  "precio_base": 1500,
+  "unidad_venta_id": 3,
+  "disponible": false
+}
+
+############################################################
+# GET /productos (listado, paginación y filtros)
+############################################################
+
+### Listado por defecto (solo activos)
+# Esperado: 200
+GET {{baseUrl}}/productos
+
+### Paginación
+# Esperado: 200 (un solo producto, el segundo)
+GET {{baseUrl}}/productos?skip=1&limit=1
+
+### Filtro search (parcial, sin distinguir mayúsculas)
+# Esperado: 200 (solo Harina 000)
+GET {{baseUrl}}/productos?search=HARINA
+
+### Filtro disponible=false
+# Esperado: 200 (solo Agua mineral)
+GET {{baseUrl}}/productos?disponible=false
+
+### Filtro activo=false (todavía no hay anulados)
+# Esperado: 200 (lista vacía)
+GET {{baseUrl}}/productos?activo=false
+
+### limit fuera de rango
+# Esperado: 422
+GET {{baseUrl}}/productos?limit=51
+
+############################################################
+# GET /productos/{id}
+############################################################
+
+### Detalle (hay_stock = true porque stock_cantidad = 3.5)
+# Esperado: 200
+GET {{baseUrl}}/productos/{{harina.response.body.$.id}}
+
+############################################################
+# PUT /productos/{id}
+############################################################
+
+### Actualizar precio y descripción
+# Esperado: 200
+PUT {{baseUrl}}/productos/{{harina.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Harina 000",
+  "descripcion": "Harina de trigo x kg",
+  "precio_base": 14.75,
+  "unidad_venta_id": 1,
+  "stock_cantidad": 3.5,
+  "disponible": true
+}
+
+### Pausar la venta: disponible = false no modifica activo
+# Esperado: 200 (disponible = false, activo = true)
+PUT {{baseUrl}}/productos/{{harina.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Harina 000",
+  "descripcion": "Harina de trigo x kg",
+  "precio_base": 14.75,
+  "unidad_venta_id": 1,
+  "stock_cantidad": 3.5,
+  "disponible": false
+}
+
+### hay_stock antes de vaciar el stock
+# Esperado: 200 (hay_stock = true)
+GET {{baseUrl}}/productos/{{harina.response.body.$.id}}
+
+### Llevar el stock a 0
+# Esperado: 200 (hay_stock = false)
+PUT {{baseUrl}}/productos/{{harina.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Harina 000",
+  "descripcion": "Harina de trigo x kg",
+  "precio_base": 14.75,
+  "unidad_venta_id": 1,
+  "stock_cantidad": 0,
+  "disponible": false
+}
+
+### hay_stock después de vaciar el stock
+# Esperado: 200 (hay_stock = false, disponible y activo sin cambios)
+GET {{baseUrl}}/productos/{{harina.response.body.$.id}}
+
+############################################################
+# Errores 422 (validaciones)
+############################################################
+
+### Nombre con menos de 3 caracteres
+# Esperado: 422
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Té",
+  "precio_base": 100,
+  "unidad_venta_id": 1
+}
+
+### Precio negativo
+# Esperado: 422
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Producto con precio negativo",
+  "precio_base": -1,
+  "unidad_venta_id": 1
+}
+
+### Stock negativo
+# Esperado: 422
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Producto con stock negativo",
+  "precio_base": 100,
+  "unidad_venta_id": 1,
+  "stock_cantidad": -2
+}
+
+### Sin unidad de venta
+# Esperado: 422
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Producto sin unidad",
+  "precio_base": 100
+}
+
+### Stock con decimales sobre unidad contable (POST)
+# Esperado: 422
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Medialuna",
+  "precio_base": 500,
+  "unidad_venta_id": 5,
+  "stock_cantidad": 2.5
+}
+
+### Stock con decimales sobre unidad contable (PUT)
+# Esperado: 422
+PUT {{baseUrl}}/productos/{{empanada.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Empanada de carne",
+  "precio_base": 900,
+  "unidad_venta_id": 5,
+  "stock_cantidad": 10.5
+}
+
+### Cambio de unidad a contable con stock decimal (PUT)
+# Esperado: 422
+PUT {{baseUrl}}/productos/{{agua.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Agua mineral",
+  "precio_base": 1500,
+  "unidad_venta_id": 5,
+  "stock_cantidad": 1.5,
+  "disponible": false
+}
+
+############################################################
+# Errores 404
+############################################################
+
+### Detalle de un id inexistente
+# Esperado: 404
+GET {{baseUrl}}/productos/99999
+
+### Actualizar un id inexistente
+# Esperado: 404
+PUT {{baseUrl}}/productos/99999
+Content-Type: application/json
+
+{
+  "nombre": "No existe",
+  "precio_base": 100,
+  "unidad_venta_id": 1
+}
+
+### Anular un id inexistente
+# Esperado: 404
+DELETE {{baseUrl}}/productos/99999
+
+### Unidad de venta inexistente
+# Esperado: 404
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Producto con unidad inexistente",
+  "precio_base": 100,
+  "unidad_venta_id": 99999
+}
+
+############################################################
+# Errores 409 (nombre repetido)
+############################################################
+
+### Nombre repetido al crear (sin distinguir mayúsculas)
+# Esperado: 409
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "harina 000",
+  "precio_base": 100,
+  "unidad_venta_id": 1
+}
+
+### Nombre repetido al actualizar
+# Esperado: 409
+PUT {{baseUrl}}/productos/{{empanada.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Harina 000",
+  "precio_base": 900,
+  "unidad_venta_id": 5,
+  "stock_cantidad": 24
+}
+
+############################################################
+# DELETE /productos/{id} (baja lógica)
+############################################################
+
+### Anular producto
+# Esperado: 204
+DELETE {{baseUrl}}/productos/{{agua.response.body.$.id}}
+
+### Ya no aparece en el listado por defecto
+# Esperado: 200 (sin Agua mineral)
+GET {{baseUrl}}/productos
+
+### Aparece con activo=false, con disponible sin modificar
+# Esperado: 200 (Agua mineral, activo = false, disponible = false, anulado_at con fecha)
+GET {{baseUrl}}/productos?activo=false
+
+### Se puede consultar por id
+# Esperado: 200
+GET {{baseUrl}}/productos/{{agua.response.body.$.id}}
+
+### Anular de nuevo
+# Esperado: 409
+DELETE {{baseUrl}}/productos/{{agua.response.body.$.id}}
+
+### Modificar un producto anulado
+# Esperado: 409
+PUT {{baseUrl}}/productos/{{agua.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Agua mineral",
+  "precio_base": 1600,
+  "unidad_venta_id": 3
+}
+
+### El nombre de un anulado queda libre
+# Esperado: 201
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Agua mineral",
+  "precio_base": 1600,
+  "unidad_venta_id": 3,
+  "stock_cantidad": 12
+}
+
+############################################################
+# Filtro categoria_id (usa el módulo Categorías)
+############################################################
+
+### Crear categoría
+# Esperado: 201
+# @name panificados
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Panificados",
+  "descripcion": "Harinas y masas"
+}
+
+### Clasificar la harina en la categoría
+# Esperado: 201
+POST {{baseUrl}}/productos/{{harina.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{panificados.response.body.$.id}},
+  "es_principal": true
+}
+
+### Productos de la categoría (sin duplicados)
+# Esperado: 200 (solo Harina 000)
+GET {{baseUrl}}/productos?categoria_id={{panificados.response.body.$.id}}

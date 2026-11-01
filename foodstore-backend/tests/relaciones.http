@@ -1,0 +1,288 @@
+# Pruebas de Categorías y de las relaciones 1:N y N:N (extensión REST Client de VS Code).
+# Ejecutar en orden sobre una base recién creada (ver README).
+# IDs del seed de unidades: 1 kilogramo (peso), 3 litro (volumen), 5 pieza (contable).
+
+@baseUrl = http://localhost:8000/api/v1
+
+############################################################
+# Categorías: alta, consultas y validaciones
+############################################################
+
+### Alta de categoría Pastas
+# Esperado: 201
+# @name pastas
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Pastas",
+  "descripcion": "Pastas frescas y secas"
+}
+
+### Alta de categoría Congelados
+# Esperado: 201
+# @name congelados
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Congelados"
+}
+
+### Alta de categoría Bebidas
+# Esperado: 201
+# @name bebidas
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Bebidas",
+  "descripcion": "Con y sin alcohol"
+}
+
+### Nombre repetido entre las activas (sin distinguir mayúsculas)
+# Esperado: 409
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "pastas"
+}
+
+### Nombre con menos de 3 caracteres
+# Esperado: 422
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Pa"
+}
+
+### Listado (solo activas)
+# Esperado: 200
+GET {{baseUrl}}/categorias
+
+### Filtro search
+# Esperado: 200 (solo Congelados)
+GET {{baseUrl}}/categorias?search=congel
+
+### Detalle
+# Esperado: 200
+GET {{baseUrl}}/categorias/{{pastas.response.body.$.id}}
+
+### Detalle de un id inexistente
+# Esperado: 404
+GET {{baseUrl}}/categorias/99999
+
+### Actualizar nombre y descripción
+# Esperado: 200
+PUT {{baseUrl}}/categorias/{{pastas.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Pastas",
+  "descripcion": "Pastas frescas, secas y rellenas"
+}
+
+### Actualizar con un nombre repetido
+# Esperado: 409
+PUT {{baseUrl}}/categorias/{{congelados.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Pastas"
+}
+
+### Actualizar con nombre corto
+# Esperado: 422
+PUT {{baseUrl}}/categorias/{{congelados.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Co"
+}
+
+### Actualizar un id inexistente
+# Esperado: 404
+PUT {{baseUrl}}/categorias/99999
+Content-Type: application/json
+
+{
+  "nombre": "No existe"
+}
+
+############################################################
+# Productos para clasificar (relación 1:N con UnidadMedida)
+############################################################
+
+### Producto vendido por kilogramo
+# Esperado: 201 (unidad_venta anidada con nombre y símbolo)
+# @name noquis
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Ñoquis de papa",
+  "precio_base": 4200,
+  "unidad_venta_id": 1,
+  "stock_cantidad": 5.250
+}
+
+### Producto vendido por litro
+# Esperado: 201
+# @name gaseosa
+POST {{baseUrl}}/productos
+Content-Type: application/json
+
+{
+  "nombre": "Gaseosa cola",
+  "precio_base": 2500,
+  "unidad_venta_id": 3,
+  "stock_cantidad": 30
+}
+
+############################################################
+# Relación N:N: clasificación con cambio de principal
+############################################################
+
+### Clasificar Ñoquis en Pastas como principal
+# Esperado: 201
+POST {{baseUrl}}/productos/{{noquis.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{pastas.response.body.$.id}},
+  "es_principal": true
+}
+
+### Clasificar Ñoquis en Congelados como nueva principal
+# Esperado: 201
+POST {{baseUrl}}/productos/{{noquis.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{congelados.response.body.$.id}},
+  "es_principal": true
+}
+
+### Categorías del producto: Pastas quedó en false, Congelados en true
+# Esperado: 200
+GET {{baseUrl}}/productos/{{noquis.response.body.$.id}}/categorias
+
+### Clasificar dos veces en la misma categoría
+# Esperado: 409
+POST {{baseUrl}}/productos/{{noquis.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{pastas.response.body.$.id}},
+  "es_principal": false
+}
+
+### Clasificar en una categoría inexistente
+# Esperado: 404
+POST {{baseUrl}}/productos/{{noquis.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": 99999,
+  "es_principal": false
+}
+
+### Clasificar un producto inexistente
+# Esperado: 404
+POST {{baseUrl}}/productos/99999/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{pastas.response.body.$.id}},
+  "es_principal": false
+}
+
+### Clasificar Gaseosa en Bebidas
+# Esperado: 201
+POST {{baseUrl}}/productos/{{gaseosa.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{bebidas.response.body.$.id}},
+  "es_principal": true
+}
+
+### Filtro categoria_id del listado de productos (sin duplicar filas)
+# Esperado: 200 (solo Ñoquis de papa)
+GET {{baseUrl}}/productos?categoria_id={{pastas.response.body.$.id}}
+
+### Filtro categoria_id con otra categoría
+# Esperado: 200 (solo Gaseosa cola)
+GET {{baseUrl}}/productos?categoria_id={{bebidas.response.body.$.id}}
+
+############################################################
+# Anulación de categoría: sus productos siguen activos
+############################################################
+
+### Anular la categoría Bebidas
+# Esperado: 204
+DELETE {{baseUrl}}/categorias/{{bebidas.response.body.$.id}}
+
+### El producto clasificado en ella sigue activo
+# Esperado: 200 (activo = true; la categoría figura con activo = false)
+GET {{baseUrl}}/productos/{{gaseosa.response.body.$.id}}
+
+### La categoría aparece con activo=false
+# Esperado: 200 (solo Bebidas)
+GET {{baseUrl}}/categorias?activo=false
+
+### Anular de nuevo
+# Esperado: 409
+DELETE {{baseUrl}}/categorias/{{bebidas.response.body.$.id}}
+
+### Modificar una categoría anulada
+# Esperado: 409
+PUT {{baseUrl}}/categorias/{{bebidas.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Bebidas sin alcohol"
+}
+
+### Anular un id inexistente
+# Esperado: 404
+DELETE {{baseUrl}}/categorias/99999
+
+### Clasificar en una categoría anulada
+# Esperado: 409
+POST {{baseUrl}}/productos/{{noquis.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{bebidas.response.body.$.id}},
+  "es_principal": false
+}
+
+### El nombre de una categoría anulada queda libre
+# Esperado: 201
+POST {{baseUrl}}/categorias
+Content-Type: application/json
+
+{
+  "nombre": "Bebidas"
+}
+
+############################################################
+# Producto anulado no se puede clasificar
+############################################################
+
+### Anular Gaseosa
+# Esperado: 204
+DELETE {{baseUrl}}/productos/{{gaseosa.response.body.$.id}}
+
+### Clasificar un producto anulado
+# Esperado: 409
+POST {{baseUrl}}/productos/{{gaseosa.response.body.$.id}}/categorias
+Content-Type: application/json
+
+{
+  "categoria_id": {{pastas.response.body.$.id}},
+  "es_principal": false
+}

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 import Button from './Button'
 
 type Tamano = 'md' | 'lg'
@@ -18,7 +18,7 @@ const TAMANOS: Record<Tamano, string> = {
 }
 
 // Aviso de error: role="alert" hace que el lector de pantalla lo anuncie al aparecer.
-export default function Alert({ titulo, onCerrar, tamano = 'md', className = '', children }: AlertProps) {
+const Alert: FC<AlertProps> = ({ titulo, onCerrar, tamano = 'md', className = '', children }) => {
   return (
     <div role="alert" className={`border border-red-200 bg-red-50 text-sm text-red-700 ${TAMANOS[tamano]} ${className}`}>
       <div className="flex items-center justify-between gap-4">
@@ -35,3 +35,5 @@ export default function Alert({ titulo, onCerrar, tamano = 'md', className = '',
     </div>
   )
 }
+
+export default Alert

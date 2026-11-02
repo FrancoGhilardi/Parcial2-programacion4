@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef } from 'react'
+import type { ComponentPropsWithoutRef, FC } from 'react'
 
 type Variante = 'primary' | 'danger' | 'ghost' | 'neutral' | 'warning' | 'dangerSoft'
 type Tamano = 'sm' | 'md'
@@ -27,12 +27,14 @@ const TAMANOS: Record<Tamano, string> = {
   md: 'px-4 py-2 text-sm',
 }
 
-export default function Button({
+const Button: FC<ButtonProps> = ({
   variante = 'neutral',
   tamano = 'md',
   type = 'button',
   className = '',
   ...props
-}: ButtonProps) {
+}) => {
   return <button type={type} className={`${BASE} ${VARIANTES[variante]} ${TAMANOS[tamano]} ${className}`} {...props} />
 }
+
+export default Button

@@ -1,5 +1,5 @@
 import { useEffect, useId } from 'react'
-import type { ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 
 type Rol = 'dialog' | 'alertdialog'
 type Tamano = 'sm' | 'lg'
@@ -22,7 +22,7 @@ const TAMANOS: Record<Tamano, string> = {
 }
 
 // Estructura común de los diálogos: fondo oscuro, panel, título, accesibilidad y cierre con Escape.
-export default function Modal({
+const Modal: FC<ModalProps> = ({
   titulo,
   descripcion,
   rol = 'dialog',
@@ -30,7 +30,7 @@ export default function Modal({
   cerrable = true,
   onCerrar,
   children,
-}: ModalProps) {
+}) => {
   const idTitulo = useId()
   const idDescripcion = useId()
 
@@ -64,3 +64,5 @@ export default function Modal({
     </div>
   )
 }
+
+export default Modal

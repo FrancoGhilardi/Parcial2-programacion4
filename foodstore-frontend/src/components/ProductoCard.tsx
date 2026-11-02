@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import type { Producto } from '../types/producto'
 import Button from './Button'
 
@@ -13,13 +14,13 @@ interface ProductoCardProps {
 const formatoPrecio = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const formatoStock = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 3 })
 
-export default function ProductoCard({
+const ProductoCard: FC<ProductoCardProps> = ({
   producto,
   procesando,
   onEditar,
   onToggleDisponible,
   onAnular,
-}: ProductoCardProps) {
+}) => {
   const simbolo = producto.unidad_venta.simbolo
 
   return (
@@ -104,3 +105,5 @@ export default function ProductoCard({
     </article>
   )
 }
+
+export default ProductoCard

@@ -27,11 +27,13 @@ npm run preview   # sirve el build de producción
 
 ## Configuración
 
-La URL de la API está en `src/App.tsx`:
+La URL de la API se toma de la variable `VITE_API_URL`; si no está definida, se usa `http://localhost:8000/api/v1`. Para cambiarla, copiar `.env.example` a `.env` y editarla (hay que reiniciar `npm run dev`):
 
 ```ts
-const API_URL = 'http://localhost:8000/api/v1'
+const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
 ```
+
+Sin `.env` la aplicación funciona igual con el backend local.
 
 El listado pide hasta 50 productos (`limit=50`, el máximo que admite la API).
 
@@ -53,11 +55,16 @@ src/
 │   ├── ProductoList.tsx    # recibe Producto[] por props y lo renderiza con .map()
 │   ├── ProductoCard.tsx    # tarjeta: precio, stock, indicadores y acciones
 │   ├── ProductoModal.tsx   # modal de alta / edición (estado del formulario con useState)
-│   └── ConfirmDialog.tsx   # diálogo de confirmación de la anulación
+│   ├── ConfirmDialog.tsx   # diálogo de confirmación de la anulación
+│   ├── Button.tsx          # botón reutilizable con variantes y tamaños
+│   ├── Modal.tsx           # ventana modal accesible (título, Escape, role dialog / alertdialog)
+│   ├── Alert.tsx           # aviso de error con role="alert" y botón Cerrar opcional
+│   └── Field.tsx           # etiqueta + control + ayuda, vinculados por id y aria-describedby
 ├── types/
 │   ├── producto.ts         # Producto y ProductoPayload
 │   ├── unidadMedida.ts     # UnidadMedida
 │   └── categoria.ts        # Categoria y CategoriaDeProducto
+├── vite-env.d.ts           # tipo de VITE_API_URL
 ├── App.tsx                 # estado del catálogo (useState/useEffect) y llamadas fetch
 ├── main.tsx
 └── index.css               # @import "tailwindcss"
@@ -66,5 +73,6 @@ src/
 ## Decisiones de diseño
 
 - **Estado elevado**: todo el estado del catálogo y todas las llamadas a la API viven en `App.tsx`. Los componentes hijos reciben los datos por props tipadas y comunican las acciones mediante funciones recibidas por props; ninguno consulta la API por su cuenta.
+- **Componentes reutilizables** (`Button`, `Modal`, `Alert`, `Field`): solo reciben props tipadas y no consultan la API.
 - **Solo `fetch` nativo**, `useState` y `useEffect`: sin Axios, TanStack Query, Zustand ni librerías de formularios o de componentes.
 - **TypeScript estricto** (`"strict": true` en `tsconfig.app.json`) y sin `any`. Las interfaces de `src/types/` usan los mismos nombres de campo que la API.

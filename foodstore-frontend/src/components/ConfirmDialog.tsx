@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import Button from './Button'
 import Modal from './Modal'
 
@@ -10,14 +11,14 @@ interface ConfirmDialogProps {
   onCancelar: () => void
 }
 
-export default function ConfirmDialog({
+const ConfirmDialog: FC<ConfirmDialogProps> = ({
   titulo,
   mensaje,
   textoConfirmar,
   procesando,
   onConfirmar,
   onCancelar,
-}: ConfirmDialogProps) {
+}) => {
   return (
     <Modal
       titulo={titulo}
@@ -39,3 +40,5 @@ export default function ConfirmDialog({
     </Modal>
   )
 }
+
+export default ConfirmDialog

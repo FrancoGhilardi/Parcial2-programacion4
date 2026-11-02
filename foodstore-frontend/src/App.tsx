@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { FC } from 'react'
 import Alert from './components/Alert'
 import Button from './components/Button'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -8,7 +9,8 @@ import ProductoModal from './components/ProductoModal'
 import type { Producto, ProductoPayload } from './types/producto'
 import type { UnidadMedida } from './types/unidadMedida'
 
-const API_URL = 'http://localhost:8000/api/v1'
+// Configurable con VITE_API_URL en .env; sin él se usa el backend local.
+const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
 // La API pagina con limit (máx. 50); la UI pide el máximo.
 const URL_PRODUCTOS = `${API_URL}/productos?limit=50`
 
@@ -28,36 +30,38 @@ interface ErrorValidacion {
   ctx?: Record<string, unknown>
 }
 
+type Traductor = (campo: string, ctx: Record<string, unknown>) => string
+
+const demasiadoGrande: Traductor = (campo) => `${campo} es demasiado grande.`
+const debeSerNumero: Traductor = (campo) => `${campo} debe ser un número.`
+const valorNoValido: Traductor = (campo) => `${campo} tiene un valor no válido.`
+
+// Mensaje en español por cada `type` de error de Pydantic. Para cubrir uno nuevo, agregar una entrada.
+const TRADUCTORES: Record<string, Traductor> = {
+  missing: (campo) => `${campo} es obligatorio.`,
+  string_too_short: (campo, ctx) => `${campo} debe tener al menos ${String(ctx.min_length)} caracteres.`,
+  greater_than_equal: (campo, ctx) =>
+    ctx.ge === 0 ? `${campo} no puede ser negativo.` : `${campo} debe ser mayor o igual a ${String(ctx.ge)}.`,
+  decimal_max_places: (campo, ctx) => `${campo} admite hasta ${String(ctx.decimal_places)} decimales.`,
+  decimal_whole_digits: demasiadoGrande,
+  decimal_max_digits: demasiadoGrande,
+  less_than_equal: demasiadoGrande,
+  decimal_parsing: debeSerNumero,
+  decimal_type: debeSerNumero,
+  int_parsing: debeSerNumero,
+  int_type: debeSerNumero,
+}
+
 // Traduce un error de validación de Pydantic (422) a un mensaje en español.
-function traducirErrorValidacion(item: ErrorValidacion): string {
+const traducirErrorValidacion = (item: ErrorValidacion): string => {
   const campo = ETIQUETAS_CAMPO[String(item.loc?.at(-1))] ?? 'Un dato'
-  const ctx = item.ctx ?? {}
-  switch (item.type) {
-    case 'missing':
-      return `${campo} es obligatorio.`
-    case 'string_too_short':
-      return `${campo} debe tener al menos ${String(ctx.min_length)} caracteres.`
-    case 'greater_than_equal':
-      return ctx.ge === 0 ? `${campo} no puede ser negativo.` : `${campo} debe ser mayor o igual a ${String(ctx.ge)}.`
-    case 'decimal_max_places':
-      return `${campo} admite hasta ${String(ctx.decimal_places)} decimales.`
-    case 'decimal_whole_digits':
-    case 'decimal_max_digits':
-    case 'less_than_equal':
-      return `${campo} es demasiado grande.`
-    case 'decimal_parsing':
-    case 'decimal_type':
-    case 'int_parsing':
-    case 'int_type':
-      return `${campo} debe ser un número.`
-    default:
-      return `${campo} tiene un valor no válido.`
-  }
+  const traducir = TRADUCTORES[item.type ?? ''] ?? valorNoValido
+  return traducir(campo, item.ctx ?? {})
 }
 
 // Convierte el {"detail": ...} de la API en un texto para mostrar.
 // detail es un string (HTTPException) o una lista de errores (422 de Pydantic).
-async function leerError(res: Response): Promise<string> {
+const leerError = async (res: Response): Promise<string> => {
   try {
     const data: unknown = await res.json()
     if (typeof data === 'object' && data !== null && 'detail' in data) {
@@ -78,7 +82,7 @@ async function leerError(res: Response): Promise<string> {
     : `El servidor rechazó la solicitud (código ${res.status}).`
 }
 
-function mensajeDeError(e: unknown): string {
+const mensajeDeError = (e: unknown): string => {
   if (e instanceof TypeError) {
     return 'No se pudo conectar con el servidor. Verificá que esté en funcionamiento e intentá de nuevo.'
   }
@@ -86,14 +90,14 @@ function mensajeDeError(e: unknown): string {
 }
 
 // GET de productos: lo usan la carga inicial y el refresco tras cada operación.
-async function obtenerProductos(): Promise<Producto[]> {
+const obtenerProductos = async (): Promise<Producto[]> => {
   const res = await fetch(URL_PRODUCTOS)
   if (!res.ok) throw new Error(await leerError(res))
   return res.json()
 }
 
 // POST si id es null (alta), PUT si no (edición o cambio de disponibilidad).
-function enviarProducto(id: number | null, payload: ProductoPayload): Promise<Response> {
+const enviarProducto = (id: number | null, payload: ProductoPayload): Promise<Response> => {
   return fetch(id === null ? `${API_URL}/productos` : `${API_URL}/productos/${id}`, {
     method: id === null ? 'POST' : 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -101,7 +105,7 @@ function enviarProducto(id: number | null, payload: ProductoPayload): Promise<Re
   })
 }
 
-function payloadDesde(producto: Producto): ProductoPayload {
+const payloadDesde = (producto: Producto): ProductoPayload => {
   return {
     nombre: producto.nombre,
     descripcion: producto.descripcion,
@@ -112,7 +116,7 @@ function payloadDesde(producto: Producto): ProductoPayload {
   }
 }
 
-export default function App() {
+const App: FC = () => {
   const [productos, setProductos] = useState<Producto[]>([])
   const [unidades, setUnidades] = useState<UnidadMedida[]>([])
   const [cargando, setCargando] = useState(true)
@@ -126,7 +130,7 @@ export default function App() {
   const [productoAAnular, setProductoAAnular] = useState<Producto | null>(null)
 
   // cargando arranca en true: el setState ocurre después de las respuestas.
-  const cargarCatalogo = async () => {
+  const cargarCatalogo = async (): Promise<void> => {
     try {
       const [listaProductos, resUnidades] = await Promise.all([
         obtenerProductos(),
@@ -143,7 +147,7 @@ export default function App() {
     }
   }
 
-  const reintentar = () => {
+  const reintentar = (): void => {
     setCargando(true)
     setError(null)
     void cargarCatalogo()
@@ -156,7 +160,7 @@ export default function App() {
 
   // Refresca la lista después de cada operación. Su error se informa aparte:
   // la operación ya se hizo en el servidor, lo que falló es la recarga.
-  const refrescarProductos = async () => {
+  const refrescarProductos = async (): Promise<void> => {
     try {
       setProductos(await obtenerProductos())
     } catch {
@@ -164,26 +168,26 @@ export default function App() {
     }
   }
 
-  const abrirNuevo = () => {
+  const abrirNuevo = (): void => {
     setProductoSeleccionado(null)
     setErrorModal(null)
     setModalAbierto(true)
   }
 
-  const abrirEdicion = (producto: Producto) => {
+  const abrirEdicion = (producto: Producto): void => {
     setProductoSeleccionado(producto)
     setErrorModal(null)
     setModalAbierto(true)
   }
 
-  const cerrarModal = () => {
+  const cerrarModal = (): void => {
     setModalAbierto(false)
     setProductoSeleccionado(null)
     setErrorModal(null)
   }
 
   // Alta (POST) o edición (PUT) según haya producto seleccionado.
-  const guardarProducto = async (payload: ProductoPayload) => {
+  const guardarProducto = async (payload: ProductoPayload): Promise<void> => {
     setGuardando(true)
     setErrorModal(null)
     try {
@@ -204,7 +208,7 @@ export default function App() {
   }
 
   // Ejecuta una acción de la tarjeta y refresca la lista.
-  const ejecutarAccion = async (accion: () => Promise<Response>) => {
+  const ejecutarAccion = async (accion: () => Promise<Response>): Promise<void> => {
     setProcesando(true)
     setErrorAccion(null)
     try {
@@ -223,11 +227,11 @@ export default function App() {
   }
 
   // PUT con todos los campos y disponible invertido.
-  const toggleDisponible = (producto: Producto) =>
+  const toggleDisponible = (producto: Producto): Promise<void> =>
     ejecutarAccion(() => enviarProducto(producto.id, { ...payloadDesde(producto), disponible: !producto.disponible }))
 
   // Baja lógica (DELETE) tras confirmar en el diálogo: el producto sale del listado.
-  const confirmarAnulacion = async () => {
+  const confirmarAnulacion = async (): Promise<void> => {
     if (productoAAnular === null) return
     const { id } = productoAAnular
     await ejecutarAccion(() => fetch(`${API_URL}/productos/${id}`, { method: 'DELETE' }))
@@ -298,3 +302,5 @@ export default function App() {
     </div>
   )
 }
+
+export default App

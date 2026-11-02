@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 
 // Atributos que el campo le pasa al control (input, select o textarea) para vincularlo con su etiqueta y su ayuda.
 interface ControlProps {
@@ -21,7 +21,7 @@ export const claseControl =
 
 // Etiqueta + control + texto de ayuda. El asterisco es decorativo: el lector de pantalla
 // anuncia "obligatorio" a partir del atributo required del control.
-export default function Field({ id, etiqueta, obligatorio = false, opcional = false, ayuda, children }: FieldProps) {
+const Field: FC<FieldProps> = ({ id, etiqueta, obligatorio = false, opcional = false, ayuda, children }) => {
   const idAyuda = `${id}-ayuda`
   return (
     <div>
@@ -39,3 +39,5 @@ export default function Field({ id, etiqueta, obligatorio = false, opcional = fa
     </div>
   )
 }
+
+export default Field

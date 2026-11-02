@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ChangeEvent, SubmitEvent } from 'react'
+import type { ChangeEvent, FC, SubmitEvent } from 'react'
 import type { Producto, ProductoPayload } from '../types/producto'
 import type { UnidadMedida } from '../types/unidadMedida'
 import Alert from './Alert'
@@ -26,7 +26,7 @@ interface FormState {
   disponible: boolean
 }
 
-function estadoInicial(producto: Producto | null): FormState {
+const estadoInicial = (producto: Producto | null): FormState => {
   if (producto === null) {
     return { nombre: '', descripcion: '', precio_base: '', unidad_venta_id: '', stock_cantidad: '0', disponible: true }
   }
@@ -40,25 +40,25 @@ function estadoInicial(producto: Producto | null): FormState {
   }
 }
 
-export default function ProductoModal({
+const ProductoModal: FC<ProductoModalProps> = ({
   producto,
   unidades,
   error,
   guardando,
   onGuardar,
   onCancelar,
-}: ProductoModalProps) {
+}) => {
   const [form, setForm] = useState<FormState>(() => estadoInicial(producto))
 
   const unidadSeleccionada = unidades.find((unidad) => String(unidad.id) === form.unidad_venta_id)
   const esContable = unidadSeleccionada?.tipo === 'contable'
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>): void => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>): void => {
     e.preventDefault()
     onGuardar({
       nombre: form.nombre.trim(),
@@ -196,3 +196,5 @@ export default function ProductoModal({
     </Modal>
   )
 }
+
+export default ProductoModal

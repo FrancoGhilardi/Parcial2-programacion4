@@ -1,10 +1,11 @@
+import type { FC } from 'react'
 import Button from './Button'
 
 interface NavbarProps {
   onNuevo: () => void
 }
 
-export default function Navbar({ onNuevo }: NavbarProps) {
+const Navbar: FC<NavbarProps> = ({ onNuevo }) => {
   return (
     <header className="border-b border-stone-200 bg-white">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -19,3 +20,5 @@ export default function Navbar({ onNuevo }: NavbarProps) {
     </header>
   )
 }
+
+export default Navbar

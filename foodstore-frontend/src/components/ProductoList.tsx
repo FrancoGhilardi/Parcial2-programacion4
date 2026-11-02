@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import type { Producto } from '../types/producto'
 import ProductoCard from './ProductoCard'
 
@@ -9,13 +10,13 @@ interface ProductoListProps {
   onAnular: (producto: Producto) => void
 }
 
-export default function ProductoList({
+const ProductoList: FC<ProductoListProps> = ({
   productos,
   procesando,
   onEditar,
   onToggleDisponible,
   onAnular,
-}: ProductoListProps) {
+}) => {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {productos.map((producto) => (
@@ -32,3 +33,5 @@ export default function ProductoList({
     </ul>
   )
 }
+
+export default ProductoList

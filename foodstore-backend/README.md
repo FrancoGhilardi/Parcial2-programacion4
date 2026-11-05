@@ -120,7 +120,7 @@ app/
 │   ├── database.py          # engine, cadena de conexión y dependencia de sesión
 │   └── seed.py              # seed de unidades de medida
 └── modules/
-    ├── unidades_medida/     # model · router (catálogo de solo lectura)
+    ├── unidades_medida/     # model · router · service (catálogo de solo lectura)
     ├── categorias/          # model · schema · service · router
     └── productos/           # model (+ ProductoCategoria) · schema · service · router
 tests/
